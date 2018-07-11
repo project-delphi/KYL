@@ -1,6 +1,6 @@
 pragma solidity ^0.4.22;
 
-import "./SafeMath.sol";
+import "./SafeMath.sol";  ///se testea y prueba, ya se importo la libreria para faciltar sus pruebas
 
 contract Ownable {
     address public owner;   
