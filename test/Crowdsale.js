@@ -19,7 +19,23 @@ contract('KYLCrowdsale', (accounts) =>{
         });
     });
 
+    it('should mint bonus tokens', (done) =>{
+        KYLCrowdsale.deployed().then(async (ins) =>{
+            await ins.mintBonus(accounts[1], 15000000 * (10 ** 18));
+            const kylToken = getToken();
+            const amount = await kylToken.balanceOf(accounts[1]);
+            assert.equal(amount.toNumber(), 15000000 * (10 **18), 'Can´t mint tokens');
+            done();
+        });
+    });
+
     it('should buy at a preferential rate', (done) =>{
+        KYLCrowdsale.deployed().then(async (ins) =>{
+            await ins.finalizepICO().call();
+        });
+    });
+
+    /*it('should buy at a preferential rate', (done) =>{
         KYLCrowdsale.deployed().then(async (ins) =>{
             await ins.setPreferentialRate(accounts[1], 15);
             await ins.buyTokens(accounts[1], {from: accounts[1], value: web3.toWei(10, 'ether')});
@@ -29,6 +45,11 @@ contract('KYLCrowdsale', (accounts) =>{
             assert.equal(amount.toNumber() / (10 ** 18), 150, 'Rate assignment failed');
             done();
         });
-    });
+    });*/
 
 });
+
+function getToken(){
+    const token = await ins.token.call();
+    return KYLToken.at(token);
+}

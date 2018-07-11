@@ -139,12 +139,14 @@ contract KYLCrowdsale is WhitelistedCrowdsale, CappedCrowdsale{
     event PreferentialRateChange(address indexed buyer, uint256 rate);
     event InitialRateChange(uint256 rate);
     event EndRateChange(uint256 rate);
+
+    event DEBUG();
     
     uint256 preRate;
     uint256 iniRate;
     uint256 endRate;
 
-    enum phase{EA, pICO, ICO}
+    enum phase{pICO, ICO}
     phase public stage;
     
     constructor(
@@ -164,7 +166,14 @@ contract KYLCrowdsale is WhitelistedCrowdsale, CappedCrowdsale{
         preRate = _preRate;
         iniRate = _iniRate;
         endRate = _endRate;
-        stage = phase.EA;
+        stage = phase.pICO;
+        
+        KYLToken(token).pause();
+    }
+
+    /** override */
+    function createTokenContract() internal returns (MintableToken) {
+        return new KYLToken();
     }
 
     /** general functions */
@@ -183,25 +192,49 @@ contract KYLCrowdsale is WhitelistedCrowdsale, CappedCrowdsale{
         return iniRate.sub(rateRange.mul(elapsed).div(blockRange));
     }
 
-    /**early access: whitelisting */
+    /**PRE ICO: whitelisting */
     /** override */
     function addToWhitelist(address buyer) public onlyOwner {
-        require(stage == phase.EA, "Early Access Finished");
+        require(stage == phase.pICO, "PreICO finished");
         super.addToWhitelist(buyer);
     }
-    
+    //CHECK FUNCTIONALITY WITH OWNER
     function setPreferentialRate(address buyer, uint256 rate) public onlyOwner{
-        require(stage == phase.EA, "Early access finished");
+        require(stage == phase.pICO, "PreICO finished");
         require(isWhitelisted(buyer), "Address not whitelisted");
         require(rate != 0, "Rate cannot be zero");
 
         buyerRate[buyer] = rate;
         emit PreferentialRateChange(buyer, rate);
     }
+    
+    uint256 softCap = 15000000 * (10 ** 18);
+    uint256 softRaised;
+    
+    function mintBonus(address who, uint256 tokens) public onlyOwner{
+        require(stage == phase.pICO, "PreICO finished");
+        require(isWhitelisted(who), "Address not whitelisted");
+        require(softRaised <= softCap); //CHECK WITH OMAR
+        
+        token.mint(who, tokens);
+        softRaised = softRaised.add(tokens);
+        
+        //emit BonusMinting(who, tokens);
+    }
 
-    /**preico access */
+    function finalizepICO() public onlyOwner{
+        require(stage == phase.pICO, "PreICO finished");
+        require(softRaised == softCap, "Remain tokens");
+
+        stage = phase.pICO;
+    }
+    
+    uint256 hardCap = 50000000 * (10 ** 18);
+    uint256 hardRaised;
+
+    /**general access */
     function buyTokens(address who) public payable{
-        require(stage != phase.EA, "Cannot buy tokens in actual phase");
+        require(stage != phase.pICO, "Cannot buy tokens in actual phase");
         require(who != 0x0, "Invalid address");
         require(validPurchase(), "Invalid purchase");
 
@@ -210,6 +243,7 @@ contract KYLCrowdsale is WhitelistedCrowdsale, CappedCrowdsale{
         uint256 tokens = value.mul(rate);
 
         weiRaised = weiRaised.add(value);
+        softRaised = softRaised.add(value);
 
         token.mint(who, tokens);
         emit TokenPurchase(msg.sender, who, value, tokens);
@@ -220,6 +254,10 @@ contract KYLCrowdsale is WhitelistedCrowdsale, CappedCrowdsale{
     function hasEnded() public view returns(bool){
         return super.hasEnded();
     }
+    
+    /** function finalize(){
+        //start airdrops?   
+    }*/
 }
 
 //envias kyl coins

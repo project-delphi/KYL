@@ -14,7 +14,7 @@ contract Ownable {
     * @dev Throws if called by any account other than the owner.
     */
     modifier onlyOwner() {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "sender's not owner");
         _;
     }   
     /**
@@ -37,14 +37,14 @@ contract Pausable is Ownable {
     * @dev modifier to allow actions only when the contract IS paused
     */
     modifier whenNotPaused() {
-        require(!paused);
+        require(!paused, "state is paused");
         _;
     }
     /**
     * @dev modifier to allow actions only when the contract IS NOT paused
     */
     modifier whenPaused {
-        require(paused);
+        require(paused, "state is unpaused");
         _;
     }
     /**
@@ -209,7 +209,7 @@ contract KYLToken is BurnableToken, PausableToken, MintableToken {
         super.burn(_value);
     }
 
-    function mint(address _to, uint256 _amount) whenNotPaused public returns (bool) {
+    function mint(address _to, uint256 _amount) public returns (bool) {
         return super.mint(_to, _amount);
     }
 }
