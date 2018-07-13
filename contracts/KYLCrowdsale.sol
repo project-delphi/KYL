@@ -2,9 +2,17 @@ pragma solidity ^0.4.22;
 
 import "./Crowdsale.sol";
 
-contract KYLCrowdsale is CappedCrowdsale{
+contract KYLCrowdsale is Ownable, CappedCrowdsale{
+
+    event AirdropSuccess(address indexed who, uint256 tokens);
+
+    enum stage{a, b, c, d}
+    stage stages;
+
     uint256 iniRate;
     uint256 endRate;
+
+    uint256 reserve;
     
     constructor(
         uint256 _startBlock,
@@ -14,7 +22,7 @@ contract KYLCrowdsale is CappedCrowdsale{
         address wallet, 
         KYLToken _token
     )
-        public 
+        public
         Crowdsale(_startBlock, _endBlock, _iniRate, wallet)
         CappedCrowdsale(29500 ether)
         /**
@@ -25,9 +33,17 @@ contract KYLCrowdsale is CappedCrowdsale{
         require(_iniRate > 0 && _endRate > 0, "Rate is zero");
         iniRate = _iniRate;
         endRate = _endRate;
-        
+
+        reserve = 2250 ether; //590 szabo * 5M KYL = 2250 ether
         token = _token;
     }
 
-    
+    function airDrop(address who, uint rate, uint tokens) public onlyOwner{
+        require(who != address(0));
+        uint256 value = tokens.mul(rate);
+        require(value <= reserve, "Tokens value exceeds reserve");
+        
+        token.mint(who, tokens * (1 ether));
+        emit AirdropSuccess(who, tokens);
+    }
 }
