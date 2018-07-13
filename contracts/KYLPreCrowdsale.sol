@@ -25,6 +25,7 @@ contract KYLPreCrowdsale is WhitelistedCrowdsale, CappedCrowdsale{
         WhitelistedCrowdsale()
         CappedCrowdsale(8850 ether) 
         /**
+         * RATE FOR 0.25 USD = 590 * 10**12 Wei
          * 590 szabo = 0.25 usd @ 420 usd = 1 ether
          * 590 szabo * 15M KYL = 8850 ether
          */
@@ -43,7 +44,11 @@ contract KYLPreCrowdsale is WhitelistedCrowdsale, CappedCrowdsale{
 
     function getRate() public view returns(uint256){
         if (super.isWhitelisted(msg.sender)) {
-            return buyerRate[msg.sender];
+            if (buyerRate[msg.sender] == 0){
+                return preRate;
+            }else{
+                return buyerRate[msg.sender];
+            }
         }
 
         return fixRate;
@@ -59,9 +64,9 @@ contract KYLPreCrowdsale is WhitelistedCrowdsale, CappedCrowdsale{
 
     function mintBonus(address who, uint256 tokens) public onlyOwner{
         require(super.isWhitelisted(who), "Address not whitelisted");
-        require(tokens.mul(590 szabo) <= cap, "Tokens value exceeds cap");
+        uint256 value = tokens.mul(buyerRate[who]);
+        require(value <= cap, "Tokens value exceeds cap");
 
-        uint256 value = tokens.mul(590 szabo);
         weiRaised = weiRaised.add(value);
         
         token.mint(who, tokens * (1 ether));
@@ -74,8 +79,8 @@ contract KYLPreCrowdsale is WhitelistedCrowdsale, CappedCrowdsale{
         require(super.validPurchase(), "Invalid purchase");
 
         uint256 value = msg.value;
-        uint256 rate = getRate();
-        uint256 tokens = value.mul(rate);
+        //uint256 rate = getRate();
+        uint256 tokens = value.div(getRate()) * 1 ether;
 
         weiRaised = weiRaised.add(value);
 

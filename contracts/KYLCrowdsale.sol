@@ -16,7 +16,11 @@ contract KYLCrowdsale is CappedCrowdsale{
     )
         public 
         Crowdsale(_startBlock, _endBlock, _iniRate, wallet)
-        CappedCrowdsale(8840 ether) // = 15,000,000 KYL @ 0.25usd c/u @420 usd = 1 ether
+        CappedCrowdsale(29500 ether)
+        /**
+         * 590 szabo = 0.25 usd @ 420 usd = 1 ether
+         * 590 szabo * 50M KYL = 29500 ether
+         */
     {
         require(_iniRate > 0 && _endRate > 0, "Rate is zero");
         iniRate = _iniRate;
@@ -24,4 +28,6 @@ contract KYLCrowdsale is CappedCrowdsale{
         
         token = _token;
     }
+
+    
 }
