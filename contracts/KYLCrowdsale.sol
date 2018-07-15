@@ -40,10 +40,15 @@ contract KYLCrowdsale is Ownable, CappedCrowdsale{
 
     function airDrop(address who, uint rate, uint tokens) public onlyOwner{
         require(who != address(0));
+        require(block.number < endBlock);
         uint256 value = tokens.mul(rate);
         require(value <= reserve, "Tokens value exceeds reserve");
         
         token.mint(who, tokens * (1 ether));
         emit AirdropSuccess(who, tokens);
+    }
+
+    function nextStage() public onlyOwner{
+        
     }
 }
