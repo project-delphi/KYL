@@ -151,6 +151,33 @@ contract StandardToken is ERC20, BasicToken {
     }
 }
 
+contract FreezableToken is StandardToken, Ownable{
+    event FreezedTokens(address indexed who);
+    event UnfreezedTokens(address indexed who);
+
+    mapping(address => uint256) freezed;
+
+    function freeze(address who) onlyOwner public{
+        require(who != 0x0, "Invalid address");
+        require(balances[who] != 0);
+
+        freezed[who] = balances[who];
+        balances[who] = 0;
+
+        emit FreezedTokens(who);
+    }
+
+    function unfreeze(address who) onlyOwner public{
+        require(who != 0x0, "Invalid address");
+        require(freezed[who] != 0);
+
+        balances[who] = freezed[who];
+        freezed[who] = 0;
+
+        emit UnfreezedTokens(who);
+    }
+}
+
 contract BurnableToken is StandardToken {
     event Burn(address indexed burner, uint256 value);
 
@@ -162,7 +189,6 @@ contract BurnableToken is StandardToken {
         totalSupply = totalSupply.sub(_value);
         emit Burn(burner, _value);
     }
-
 }
 
 contract PausableToken is StandardToken, Pausable {
@@ -200,16 +226,8 @@ contract MintableToken is StandardToken, Ownable {
     }
 }
 
-contract KYLToken is BurnableToken, PausableToken, MintableToken {
+contract KYLToken is FreezableToken, BurnableToken, PausableToken, MintableToken {
     string public constant symbol = "KYL";
     string public constant name = "Kapytal Token";
     uint8 public constant decimals = 18;
-
-    function burn(uint256 _value) whenNotPaused public {
-        super.burn(_value);
-    }
-
-    function mint(address _to, uint256 _amount) public returns (bool) {
-        return super.mint(_to, _amount);
-    }
 }

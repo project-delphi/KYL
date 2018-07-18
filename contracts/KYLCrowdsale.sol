@@ -2,53 +2,130 @@ pragma solidity ^0.4.22;
 
 import "./Crowdsale.sol";
 
-contract KYLCrowdsale is Ownable, CappedCrowdsale{
+contract KYLPreCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
+    enum stages {pICO, ICO, end}
 
-    event AirdropSuccess(address indexed who, uint256 tokens);
+    event PreCrowdsaleStarted();
+    event CrowdsaleStarted();
+    event RateChanged(uint256 rate);
 
-    enum stage{a, b, c, d}
-    stage stages;
+    event ExternalPurchase(address indexed who, uint256 tokens);
+    event AirDroppedTokens(address indexed who, uint256 tokens);
 
-    uint256 iniRate;
-    uint256 endRate;
+    stages stage;
 
-    uint256 reserve;
-    
+    uint256 airdropCap;
+
     constructor(
         uint256 _startBlock,
         uint256 _endBlock,
-        uint256 _iniRate,
-        uint256 _endRate,
-        address wallet, 
-        KYLToken _token
+        uint256 _fixRate,
+        uint256 _airdropCap,
+        address wallet
     )
-        public
-        Crowdsale(_startBlock, _endBlock, _iniRate, wallet)
-        CappedCrowdsale(29500 ether)
+        public 
+        Crowdsale(_startBlock, _endBlock, _fixRate, wallet)
+        WhitelistedCrowdsale()
+        CappedCrowdsale(8850 ether) 
         /**
+         * RATE FOR 0.25 USD = 590 * 10**12 Wei
          * 590 szabo = 0.25 usd @ 420 usd = 1 ether
-         * 590 szabo * 50M KYL = 29500 ether
+         * 590 szabo * 15M KYL = 8850 ether
          */
     {
-        require(_iniRate > 0 && _endRate > 0, "Rate is zero");
-        iniRate = _iniRate;
-        endRate = _endRate;
+        stage = stages.pICO;
+        airdropCap = _airdropCap * (1 ether);
+        KYLToken(token).pause();
 
-        reserve = 2250 ether; //590 szabo * 5M KYL = 2250 ether
-        token = _token;
+        emit PreCrowdsaleStarted();
     }
 
-    function airDrop(address who, uint rate, uint tokens) public onlyOwner{
-        require(who != address(0));
-        require(block.number < endBlock);
+    /** function override */
+    function createTokenContract() internal returns (MintableToken) {
+        return new KYLToken();
+    }
+
+    function setRate(uint256 _rate) public whenPaused onlyOwner{
+        require(_rate > 0, "Rate is zero");
+        rate = _rate * (1 ether);
+        emit RateChanged(rate);
+    }
+
+    function getRate() public view returns(uint256){
+        return rate;
+    }
+
+    /**function override */
+    function buyTokens(address who) public whenNotPaused payable{
+        require(who != 0x0, "Invalid address");
+        require(super.validPurchase(), "Invalid purchase");
+
+        if(stage == stages.pICO){
+            require(super.isWhitelisted(who), "Address not whitelisted");
+        }
+        
+        uint256 value = msg.value;
+        uint256 tokens = value.div(rate) * 1 ether;
+        weiRaised = weiRaised.add(value);
+
+        token.mint(who, tokens);
+        emit TokenPurchase(msg.sender, who, value, tokens);
+        
+        super.forwardFunds();
+    }
+
+    /* handle external buyers */
+    function mintTo(address who, uint256 tokens) public onlyOwner{
+        require(who != 0x0, "Invalid address");
+
+        if(stage == stages.pICO){
+            require(super.isWhitelisted(who), "Address not whitelisted");
+        }
+
         uint256 value = tokens.mul(rate);
-        require(value <= reserve, "Tokens value exceeds reserve");
+        require(value <= cap, "Tokens value exceeds cap");
+        weiRaised = weiRaised.add(value);
         
         token.mint(who, tokens * (1 ether));
-        emit AirdropSuccess(who, tokens);
+        emit ExternalPurchase(who, tokens);
     }
 
-    function nextStage() public onlyOwner{
-        
+    /* airdrop tokens */
+    function airDrop(address who, uint256 tokens, uint256 _rate) public onlyOwner{
+        require(who != 0x0, "Invalid address");
+        require(tokens > 0, "Invalid token amount");
+        uint256 value = tokens.mul(_rate);
+        require(value <= airdropCap);
+
+        airdropCap = airdropCap.add(value);
+
+        token.mint(who, tokens * (1 ether));
+        emit AirDroppedTokens(who, value);
     }
+
+    // next stage
+    function nextStage() public onlyOwner whenPaused{
+        require(stage == stages.pICO);
+        stage = stages.ICO;
+
+        emit CrowdsaleStarted();
+    }
+
+    //finalize crowdsale
+    function finalize() public onlyOwner whenPaused{
+        stage = stages.end;
+        KYLToken(token).unpause();
+    }
+
+    /* liberate foundation tokens */
+    function liberate(uint256 tokens) public onlyOwner{
+        require(stage == stages.end);
+        token.mint(wallet, tokens);
+    }
+  
+    /**fallback function override */
+    function () public payable {
+        buyTokens(msg.sender);
+    }
+
 }
