@@ -27,7 +27,7 @@ contract('KYLPreCrowdsale', (accounts) =>{
             done();
         });
     });
-
+  
     it('should buy at a preferential rate', (done) =>{
         KYLPreCrowdsale.deployed().then(async (ins) =>{
             await ins.buyTokens(accounts[1], {from: accounts[1], value: web3.toWei(10, 'ether')});
@@ -38,22 +38,33 @@ contract('KYLPreCrowdsale', (accounts) =>{
             done();
         });
     });
+    
+    it('should buy at a normal rate', (done) =>{
+        KYLPreCrowdsale.deployed().then(async (ins) =>{
+            await ins.buyTokens(accounts[2], {from: accounts[2], value: web3.toWei(10, 'ether')});
+            const token = await ins.token.call();
+            const kylToken = KYLToken.at(token);
+            const amount = await kylToken.balanceOf(accounts[2]);
+            assert.equal(amount.toNumber() / (10 ** 18), 16949, 'Cannot buy tokens');
+            done();
+        });
+    });
 
     it('should match raised wei amount', (done) =>{
         KYLPreCrowdsale.deployed().then(async (ins) =>{
             const raised = await ins.weiRaised.call();
-            assert.equal(raised.toNumber() / (10 ** 18), 10, 'Wei raised mismatch');
+            assert.equal(raised.toNumber() / (10 ** 18), 20, 'Wei raised mismatch');
             done();
         });
     });
 
     it('should mint bonus tokens', (done) =>{
         KYLPreCrowdsale.deployed().then(async (ins) =>{
-            await ins.mintBonus(accounts[1], 14983051);
+            await ins.mintBonus(accounts[1], 14966102);
             const token = await ins.token.call();
             const kylToken = KYLToken.at(token);
             const amount = await kylToken.balanceOf(accounts[1]);
-            assert.equal(amount.toNumber() / (10 ** 18), 15000000, 'Can´t mint tokens');
+            assert.equal(amount.toNumber() / (10 ** 18), 14983051, 'Can´t mint tokens');
             done();
         });
     });
