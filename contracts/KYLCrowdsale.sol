@@ -2,7 +2,7 @@ pragma solidity ^0.4.22;
 
 import "./Crowdsale.sol";
 
-contract KYLPreCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
+contract KYLCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
     enum stages {pICO, ICO, end}
 
     event PreCrowdsaleStarted();
@@ -12,9 +12,10 @@ contract KYLPreCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
     event ExternalPurchase(address indexed who, uint256 tokens);
     event AirDroppedTokens(address indexed who, uint256 tokens);
 
-    stages stage;
+    stages public stage;
 
     uint256 airdropCap;
+    uint256 airDropped;
 
     constructor(
         uint256 _startBlock,
@@ -34,7 +35,7 @@ contract KYLPreCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
          */
     {
         stage = stages.pICO;
-        airdropCap = _airdropCap * (1 ether);
+        airdropCap = _airdropCap;
         KYLToken(token).pause();
 
         emit PreCrowdsaleStarted();
@@ -77,11 +78,6 @@ contract KYLPreCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
     /* handle external buyers */
     function mintTo(address who, uint256 tokens) public onlyOwner{
         require(who != 0x0, "Invalid address");
-
-        if(stage == stages.pICO){
-            require(super.isWhitelisted(who), "Address not whitelisted");
-        }
-
         uint256 value = tokens.mul(rate);
         require(value <= cap, "Tokens value exceeds cap");
         weiRaised = weiRaised.add(value);
@@ -91,19 +87,19 @@ contract KYLPreCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
     }
 
     /* airdrop tokens */
-    function airDrop(address who, uint256 tokens, uint256 _rate) public onlyOwner{
+    function airDrop(address who, uint256 tokens) public onlyOwner{
         require(who != 0x0, "Invalid address");
         require(tokens > 0, "Invalid token amount");
-        uint256 value = tokens.mul(_rate);
-        require(value <= airdropCap);
+        
+        airDropped = airDropped.add(tokens);
+        require(airDropped <= airdropCap);
 
-        airdropCap = airdropCap.add(value);
-
+        //should be in KYL?
         token.mint(who, tokens * (1 ether));
-        emit AirDroppedTokens(who, value);
+        emit AirDroppedTokens(who, tokens);
     }
 
-    // next stage
+    // finalize pICO, goto next stage
     function nextStage() public onlyOwner whenPaused{
         require(stage == stages.pICO);
         stage = stages.ICO;
@@ -111,7 +107,7 @@ contract KYLPreCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
         emit CrowdsaleStarted();
     }
 
-    //finalize crowdsale
+    //finalize public crowdsale
     function finalize() public onlyOwner whenPaused{
         stage = stages.end;
         KYLToken(token).unpause();
