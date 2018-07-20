@@ -19,8 +19,7 @@ contract('KYLCrowdsale', (accounts) =>{
     it('should be preico stage', (done) =>{
         KYLCrowdsale.deployed().then(async (ins) =>{
             const stage = await ins.stage.call();
-            console.log(stage.toNumber(), 0, 'Current stage is not PreICO');
-            assert(stage, 'PreICO');
+            assert(stage, 0, 'PreICO');
             done();
         });
     });
@@ -40,7 +39,7 @@ contract('KYLCrowdsale', (accounts) =>{
             const token = await ins.token.call();
             const kylToken = KYLToken.at(token);
             const amount = await kylToken.balanceOf(preInvestor);
-            assert.equal(amount.toNumber() / (10 ** 18), 16949, 'Cannot buy tokens');
+            assert.equal(amount.toNumber() / (10 ** 18), 16940, 'Cannot buy tokens');
             done();
         });
     });
@@ -67,7 +66,7 @@ contract('KYLCrowdsale', (accounts) =>{
     it('should match raised wei amount', (done) =>{
         KYLCrowdsale.deployed().then(async (ins) =>{
             const raised = await ins.weiRaised.call();
-            assert.equal(raised.toNumber() / (10 ** 18), 24.75, 'Wei raised mismatch');
+            assert.equal(Math.ceil(raised.toNumber() / (10 ** 18)), 25, 'Wei raised mismatch');
             done();
         });
     });
@@ -85,46 +84,85 @@ contract('KYLCrowdsale', (accounts) =>{
 
     it('should match airdrop total cap', (done) =>{
         KYLCrowdsale.deployed().then(async (ins) =>{
-            const raised = await ins.airDropped;
-            assert.equal(raised.toNumber() / (10 ** 18), 50000, 'AirDropped tokens mismatch');
-            done();
-        });
-    });
-/*
-    it('should match raised wei amount', (done) =>{
-        KYLPreCrowdsale.deployed().then(async (ins) =>{
-            const raised = await ins.weiRaised.call();
-            assert.equal(raised.toNumber() / (10 ** 18), 20, 'Wei raised mismatch');
+            const raised = await ins.airDropped.call();
+            assert.equal(raised.toNumber(), 50000, 'AirDropped tokens mismatch');
             done();
         });
     });
 
-    it('should match raised airdrops amount', (done) =>{
-        KYLPreCrowdsale.deployed().then(async (ins) =>{
-            //const raised = await ins.weiRaised.call();
-            assert.equal(raised.toNumber() / (10 ** 18), 20, 'Wei raised mismatch');
+    it('should be paused', (done) =>{
+        KYLCrowdsale.deployed().then(async (ins) =>{
+            await ins.pause();
+            const paused = await ins.paused.call();
+            assert.equal(paused, true, 'Cannot pause');
             done();
         });
     });
 
-    it('should mint bonus tokens', (done) =>{
-        KYLPreCrowdsale.deployed().then(async (ins) =>{
-            await ins.mintBonus(accounts[1], 14966102);
+    it('should reset current rate', (done) =>{
+        KYLCrowdsale.deployed().then(async (ins) =>{
+            await ins.setRate(1500);
+            const rate = await ins.getRate();
+            assert.equal(rate, 1500, 'Cannot change rate');
+            done();
+        });
+    });
+
+    it('should be unpaused', (done) =>{
+        KYLCrowdsale.deployed().then(async (ins) =>{
+            await ins.unpause();
+            const paused = await ins.paused.call();
+            assert.equal(paused, false, 'Cannot unpause');
+            done();
+        });
+    });
+
+    it('should be able to mint remaining PreICO tokens', (done) =>{
+        KYLCrowdsale.deployed().then(async (ins) =>{
+            await ins.mintTo(extInvestor, 13237500);
             const token = await ins.token.call();
             const kylToken = KYLToken.at(token);
-            const amount = await kylToken.balanceOf(accounts[1]);
-            assert.equal(amount.toNumber() / (10 ** 18), 14983051, 'Can´t mint tokens');
+            const amount = await kylToken.balanceOf(extInvestor);
+            assert.equal(Math.ceil(amount.toNumber() / (10 ** 18)), 13262500, 'Cannot buy tokens');
             done();
         });
     });
 
     it('should match raised wei amount', (done) =>{
-        KYLPreCrowdsale.deployed().then(async (ins) =>{
+        KYLCrowdsale.deployed().then(async (ins) =>{
             const raised = await ins.weiRaised.call();
-            assert.equal(Math.floor(raised.toNumber() / (10 ** 18)), 8850, 'Wei raised mismatch');
+            assert.equal(Math.ceil(raised.toNumber() / (10 ** 18)), 8850, 'Wei raised mismatch');
             done();
         });
     });
-*/
+
+    it('should be paused', (done) =>{
+        KYLCrowdsale.deployed().then(async (ins) =>{
+            await ins.pause();
+            const paused = await ins.paused.call();
+            assert.equal(paused, true, 'Cannot pause');
+            done();
+        });
+    });
+
+    it('should set next stage and be unpaused', (done) =>{
+        KYLCrowdsale.deployed().then(async (ins) =>{
+            await ins.endPreICO(1500);
+            const stage = await ins.stage.call();
+            assert.equal(stage, 1, 'Is not ICO');
+            done();
+        });
+    });
+
+    it('should be able to buy at Public ICO', (done) =>{
+        KYLCrowdsale.deployed().then(async (ins) =>{
+            await ins.buyTokens(pubInvestor, {from: pubInvestor, value: web3.toWei(10, 'ether')});
+            const token = await ins.token.call();
+            const kylToken = KYLToken.at(token);
+            const amount = await kylToken.balanceOf(pubInvestor);
+            assert.equal(amount.toNumber() / (10 ** 18), 15000, 'Cannot buy tokens');
+            done();
+        });
+    });
 });
 
