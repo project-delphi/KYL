@@ -15,11 +15,11 @@ contract KYLCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
 
     stages public stage;
 
-    uint256 public softCap;
-    uint256 public hardCap;
+    uint256 public softCap; //in KYL's
+    uint256 public hardCap; //in KYL's
 
-    uint256 public airdropCap;
-    uint256 public airDropped;
+    uint256 public airdropCap; //KYL's
+    uint256 public airDropped; //KYL's
 
     uint256 public founderCap;
     uint256 public teamMinted;
@@ -44,8 +44,8 @@ contract KYLCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
     {
         stage = stages.pICO;
 
-        softCap = 8850 ether;
-        hardCap = 29500 ether;
+        softCap = 15000000;
+        hardCap = 50000000;
 
         airdropCap = _airdropCap;
         founderCap = _founderCap;
@@ -71,14 +71,16 @@ contract KYLCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
         require(who != 0x0, "Invalid address");
         require(super.validPurchase(), "Invalid purchase");
 
-        if(stage == stages.pICO){
-            require(super.isWhitelisted(who), "Address not whitelisted");
-            require(weiRaised <= softCap, "Value exceeds softcap");
-        }
-        
         uint256 value = msg.value;
         uint256 tokens = value.mul(rate);
+
+        if(stage == stages.pICO){
+            require(super.isWhitelisted(who), "Address not whitelisted");
+            require(softCap.add(tokens) <= softCap, "Tokens exceeds softcap");
+        }
+        
         weiRaised = weiRaised.add(value);
+        softCap = softCap.add(tokens);
 
         token.mint(who, tokens);
         emit TokenPurchase(msg.sender, who, value, tokens);
@@ -109,7 +111,7 @@ contract KYLCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
     function airDrop(address who, uint256 tokens) public onlyOwner{
         require(who != 0x0, "Invalid address");
         require(tokens > 0, "Invalid token amount");
-        require(airDropped.add(tokens) <= airdropCap);
+        require(airDropped.add(tokens) <= airdropCap, "Amount exceeds airdrop cap");
 
         airDropped = airDropped.add(tokens);
 
@@ -129,7 +131,7 @@ contract KYLCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
 
     //finalize public crowdsale
     function finalize() public onlyOwner whenPaused{
-        require(block.number >= endBlock);
+        require(block.number >= endBlock, "EndBlock not reached yet");
         stage = stages.end;
         
         uint256 left = cap.sub(weiRaised).mul(rate);
@@ -141,9 +143,9 @@ contract KYLCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
 
     /* partially liberate foundation tokens */
     function teamMint(uint256 tokens) public onlyOwner{
-        require(tokens > 0, "Invalid token amount");
-        require(teamMinted.add(tokens) <= founderCap, "Amount exceeds");
-        require(stage == stages.end, "Wrong stage");
+        require(tokens > 0, "Token amount cant be 0");
+        require(teamMinted.add(tokens) <= founderCap, "Token amount exceeds team cap");
+        require(stage == stages.end, "Current stage isnt the end");
 
         founderCap = founderCap.add(tokens);
 
