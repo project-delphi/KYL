@@ -84,8 +84,8 @@ contract('KYLCrowdsale', (accounts) =>{
 
     it('should match airdrop total cap', (done) =>{
         KYLCrowdsale.deployed().then(async (ins) =>{
-            const raised = await ins.airDropped.call();
-            assert.equal(raised.toNumber(), 50000, 'AirDropped tokens mismatch');
+            const raised = await ins.airdropCap.call();
+            assert.equal(raised.toNumber(), 4950000, 'AirDropped tokens mismatch');
             done();
         });
     });
@@ -102,7 +102,7 @@ contract('KYLCrowdsale', (accounts) =>{
     it('should reset current rate', (done) =>{
         KYLCrowdsale.deployed().then(async (ins) =>{
             await ins.setRate(1500);
-            const rate = await ins.getRate();
+            const rate = await ins.rate.call();
             assert.equal(rate, 1500, 'Cannot change rate');
             done();
         });
@@ -161,6 +161,17 @@ contract('KYLCrowdsale', (accounts) =>{
             const kylToken = KYLToken.at(token);
             const amount = await kylToken.balanceOf(pubInvestor);
             assert.equal(amount.toNumber() / (10 ** 18), 15000, 'Cannot buy tokens');
+            done();
+        });
+    });
+
+    it('should be able to mint at Public ICO', (done) =>{
+        KYLCrowdsale.deployed().then(async (ins) =>{
+            await ins.mintTo(pubInvestor, 985000);
+            const token = await ins.token.call();
+            const kylToken = KYLToken.at(token);
+            const amount = await kylToken.balanceOf(extInvestor);
+            assert.equal(Math.ceil(amount.toNumber() / (10 ** 18)), 13262500, 'Cannot buy tokens');
             done();
         });
     });

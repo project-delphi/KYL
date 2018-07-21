@@ -32,9 +32,9 @@ contract Crowdsale {
 
     constructor (uint256 _startBlock, uint256 _endBlock, uint256 _rate, address _wallet) public {
         //require(_startBlock >= block.number, "Actual Block is higher");
-        require(_endBlock >= _startBlock, "EB is not higher than SB");
-        require(_rate > 0, "Rate must be positive");
-        require(_wallet != 0x0, "Funds wallet cannot be 0x0");
+        require(_endBlock >= _startBlock);
+        require(_rate > 0);
+        require(_wallet != 0x0);
 
         token = createTokenContract();
         startBlock = _startBlock;
@@ -56,8 +56,8 @@ contract Crowdsale {
 
     // low level token purchase function
     function buyTokens(address beneficiary) public payable {
-        require(beneficiary != 0x0, "IS ZEOR");
-        require(validPurchase(), "INVALID P");
+        require(beneficiary != 0x0);
+        require(validPurchase());
 
         uint256 weiAmount = msg.value;
 
@@ -95,7 +95,7 @@ contract WhitelistedCrowdsale is Crowdsale, Ownable {
     mapping (address => bool) whitelist;
 
     function addToWhitelist(address buyer) public onlyOwner {
-        require(buyer != 0x0, "Invalid Address");
+        require(buyer != 0x0);
         whitelist[buyer] = true;
     }
 

@@ -14,7 +14,7 @@ contract Ownable {
     * @dev Throws if called by any account other than the owner.
     */
     modifier onlyOwner() {
-        require(msg.sender == owner, "sender's not owner");
+        require(msg.sender == owner);
         _;
     }   
     /**
@@ -37,14 +37,14 @@ contract Pausable is Ownable {
     * @dev modifier to allow actions only when the contract IS paused
     */
     modifier whenNotPaused() {
-        require(!paused, "state is paused");
+        require(!paused);
         _;
     }
     /**
     * @dev modifier to allow actions only when the contract IS NOT paused
     */
     modifier whenPaused {
-        require(paused, "state is unpaused");
+        require(paused);
         _;
     }
     /**
@@ -155,26 +155,28 @@ contract FreezableToken is StandardToken, Ownable{
     event FreezedTokens(address indexed who);
     event UnfreezedTokens(address indexed who);
 
-    mapping(address => uint256) freezed;
+    mapping(address => bool) freezed;
 
     function freeze(address who) onlyOwner public{
-        require(who != 0x0, "Invalid address");
-        require(balances[who] != 0);
-
-        freezed[who] = balances[who];
-        balances[who] = 0;
-
+        require(who != 0x0);
+        freezed[who] = true;
         emit FreezedTokens(who);
     }
 
     function unfreeze(address who) onlyOwner public{
-        require(who != 0x0, "Invalid address");
-        require(freezed[who] != 0);
-
-        balances[who] = freezed[who];
-        freezed[who] = 0;
-
+        require(who != 0x0);
+        freezed[who] = false;
         emit UnfreezedTokens(who);
+    }
+    
+    function transfer(address _to, uint _value) public returns (bool) {
+        require(!freezed[msg.sender] && !freezed[_to]);
+        return super.transfer(_to, _value);
+    }
+    
+    function transferFrom(address _from, address _to, uint _value) public returns (bool) {
+        require(!freezed[msg.sender] && !freezed[_to]);
+        return super.transferFrom(_from, _to, _value);
     }
 }
 
