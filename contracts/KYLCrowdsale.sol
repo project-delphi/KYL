@@ -118,7 +118,9 @@ contract KYLCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
     /* finalize pICO, goto next stage */
     function endPreICO(uint256 _rate) public onlyOwner whenPaused{
         require(stage == stages.pICO, "Current stage is not preICO");
+
         stage = stages.ICO;
+        hardCap = hardCap.add(softCap);
         rate = _rate;
 
         super.unpause();
@@ -136,6 +138,14 @@ contract KYLCrowdsale is Pausable, WhitelistedCrowdsale, CappedCrowdsale{
 
         KYLToken(token).unpause();
         emit CrowdsaleFinished();
+    }
+
+    function freezeTokens(address who) public onlyOwner{
+        KYLToken(token).freeze(who);
+    }
+
+    function unfreezeTokens(address who) public onlyOwner{
+        KYLToken(token).unfreeze(who);
     }
 
     /* partial liberate foundation tokens */
